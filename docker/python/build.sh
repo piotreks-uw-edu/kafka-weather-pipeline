@@ -1,0 +1,1 @@
+docker build -t python:3.12-restricted -f ./docker-build/Dockerfile .
