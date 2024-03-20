@@ -9,6 +9,7 @@ from flask import Flask
 from apscheduler.schedulers.background import BackgroundScheduler
 from collections import deque
 from datetime import datetime
+import random
 
 app = Flask(__name__)
 
@@ -17,11 +18,11 @@ fifo_queue = deque(maxlen=10)
 def scheduled_task():
     api_key = os.environ.get('API_KEY')
     producer = CustomProducer()
-
+    step = random.randrange(800, 1000)/1000
     count = 0
     start_time = datetime.now()
-    for latitude in np.arange(e.south_point, e.north_point, 1):
-        for longitude in np.arange(e.west_point, e.east_point, 1):
+    for latitude in np.arange(e.south_point, e.north_point, step):
+        for longitude in np.arange(e.west_point, e.east_point, step):
             pollution_data = get_pollution_data(latitude, longitude, api_key)
             location_data = get_location_data(latitude, longitude, api_key)
             country = location_data [0]['country'] if location_data else 'no country'
