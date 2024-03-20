@@ -18,7 +18,7 @@ fifo_queue = deque(maxlen=10)
 def scheduled_task():
     api_key = os.environ.get('API_KEY')
     producer = CustomProducer()
-    step = random.randrange(800, 1000)/1000
+    step = random.randrange(800, 1000)/10
     count = 0
     start_time = datetime.now()
     for latitude in np.arange(e.south_point, e.north_point, step):
