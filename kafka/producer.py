@@ -28,8 +28,8 @@ class CustomProducer(ConfluentProducer):
     def deliver_callback(self, err, msg):
         if err:
             sys.stderr.write(f'Message failed delivery: {err}\n')
-        else:
-            sys.stderr.write(f'Message delivered to topic= {msg.topic()}, partition= [{msg.partition()}], offset= {msg.offset():o}\n')
+        # else:
+        #     sys.stderr.write(f'Message delivered to topic= {msg.topic()}, partition= [{msg.partition()}], offset= {msg.offset():o}\n')
 
 
 if __name__ == "__main__":
