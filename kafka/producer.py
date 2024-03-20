@@ -2,6 +2,7 @@ import os, sys
 from datetime import datetime
 from confluent_kafka import Producer as ConfluentProducer
 
+
 class CustomProducer(ConfluentProducer):
     def __init__(self):
         self.topic = os.environ.get('TOPIC')
@@ -13,7 +14,6 @@ class CustomProducer(ConfluentProducer):
         client_id = os.environ.get('CLIENT_ID')
         shared_access_key = os.environ.get('SHARED_ACCESS_KEY')
         sasl_password = f"Endpoint=sb://{bootstrap_servers}/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey={shared_access_key}"
-        
 
         conf = {
             'bootstrap.servers': bootstrap_servers,
@@ -24,7 +24,6 @@ class CustomProducer(ConfluentProducer):
             'client.id': client_id,
         }
         super().__init__(**conf)
-
 
     def deliver_callback(self, err, msg):
         if err:
@@ -42,10 +41,12 @@ if __name__ == "__main__":
     for i in range(0,100):
         key = "even" if i%2 == 0 else "odd"
         try:
-            message = str(i) + ' ' + datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            message = str(i) + ' ' + datetime.now().strftime(
+                "%Y-%m-%d %H:%M:%S")
             p.produce(p.topic, message, callback=p.deliver_callback, key=key)
-        except BufferError as e:
-            sys.stderr.write(f'Local Producer queue full ({len(p)} messages awaiting delivery) try again\n')
+        except BufferError:
+            sys.stderr.write(
+                f'Local Producer queue full ({len(p)} messages awaiting delivery) try again\n')
 
         # the call will return immediately without blocking
         p.poll(0)
