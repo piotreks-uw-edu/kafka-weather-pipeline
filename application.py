@@ -60,7 +60,7 @@ def scheduled_task():
 
 
 scheduler = BackgroundScheduler(daemon=True)
-scheduler.add_job(scheduled_task, 'interval', hours=1)
+scheduler.add_job(scheduled_task, 'interval', minutes=5)
 scheduler.start()
 
 @app.route('/')
