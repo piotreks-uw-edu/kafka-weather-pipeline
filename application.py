@@ -42,7 +42,6 @@ def scheduled_task():
                 }
 
                 message = json.dumps(message_json)
-                print(country)
 
                 try:
                     producer.produce(producer.topic,
