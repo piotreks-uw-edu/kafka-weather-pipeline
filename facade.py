@@ -45,6 +45,7 @@ def send_to_kafka(step):
                 apid_data = get_api_data(latitude, longitude, api_key)
                 message = apid_data['message']
                 country = apid_data['country']
+                sys.stderr.write(country)
 
                 try:
                     producer.produce(producer.topic,
