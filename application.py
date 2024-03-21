@@ -11,7 +11,8 @@ app = Flask(__name__)
 fifo_queue = deque(maxlen=10)
 
 def scheduled_task():
-    log_info = f.send_to_kafka()
+    step = random.randrange(900, 1100)/10
+    log_info = f.send_to_kafka(step)
     fifo_queue.append(log_info)
 
 f.schedule(scheduled_task)
@@ -21,8 +22,7 @@ start_time_string = start_time.strftime('%Y-%m-%d %H:%M:%S')
 
 fifo_queue.append(f'Started at {start_time_string}')
 
-step = random.randrange(900, 1100)/1000
-f.send_to_kafka(step)
+
 
 @app.route('/')
 def home():
