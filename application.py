@@ -10,6 +10,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from collections import deque
 from datetime import datetime
 import random
+from zoneinfo import ZoneInfo
 
 app = Flask(__name__)
 
@@ -20,7 +21,7 @@ def scheduled_task():
     producer = CustomProducer()
     step = random.randrange(800, 1000)/1000
     count = 0
-    start_time = datetime.now()
+    start_time = datetime.now(ZoneInfo("Europe/Warsaw"))
     for latitude in np.arange(e.south_point, e.north_point, step):
         for longitude in np.arange(e.west_point, e.east_point, step):
             pollution_data = get_pollution_data(latitude, longitude, api_key)
@@ -52,7 +53,7 @@ def scheduled_task():
                 producer.flush()
             
     producer.flush()
-    end_time = datetime.now()
+    end_time = datetime.now(ZoneInfo("Europe/Warsaw"))
     duration_in_seconds = (end_time - start_time).total_seconds()
     duration_in_minutes = int(duration_in_seconds / 60)
 
