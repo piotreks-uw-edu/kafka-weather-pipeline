@@ -78,7 +78,7 @@ scheduler = BackgroundScheduler(daemon=True)
 scheduler.add_job(scheduled_task, 'interval', hours=1)
 
 scheduler.start()
-scheduled_task()
+
 fifo_queue.append(f'Started at {datetime.now()}')
 
 
