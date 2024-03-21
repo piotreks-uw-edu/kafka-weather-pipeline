@@ -3,18 +3,21 @@ import sys
 import numpy as np
 import json
 import countries.europe as e
-from weather_api.api import get_pollution_data, get_location_data
+from weather_api.api import get_pollution_data, get_location_data, get_weather_data
 from kafka.producer import CustomProducer
 from flask import Flask
 from apscheduler.schedulers.background import BackgroundScheduler
 from collections import deque
 from datetime import datetime
 import random
+from requests.exceptions import SSLError
+import time
 from zoneinfo import ZoneInfo
 
 app = Flask(__name__)
 
 fifo_queue = deque(maxlen=10)
+
 
 def scheduled_task():
     api_key = os.environ.get('API_KEY')
@@ -24,34 +27,46 @@ def scheduled_task():
     start_time = datetime.now(ZoneInfo("Europe/Warsaw"))
     for latitude in np.arange(e.south_point, e.north_point, step):
         for longitude in np.arange(e.west_point, e.east_point, step):
-            pollution_data = get_pollution_data(latitude, longitude, api_key)
-            location_data = get_location_data(latitude, longitude, api_key)
-            country = location_data [0]['country'] if location_data else 'no country'
-
-            message_json = {
-                "pollution" : pollution_data,
-                "location" : location_data
-            }
-
-            message = json.dumps(message_json)
-
             try:
-                producer.produce(producer.topic,
-                                 message,
-                                 callback=producer.deliver_callback,
-                                 key=country)
-            except BufferError:
-                sys.stderr.write(
-                    f'Local Producer queue full ({len(p)} messages awaiting delivery) try again\n')
-            
-            # The call will return immediately without blocking
-            producer.poll(0)
+                pollution_data = get_pollution_data(latitude, longitude, api_key)
+                # location_data = get_location_data(latitude, longitude, api_key)
+                weather_data = get_weather_data(latitude, longitude, api_key)
+                try:
+                    country = weather_data['sys']['country']
+                except KeyError:
+                    country = 'no country'
 
-            count += 1
+                message_json = {
+                    "pollution": pollution_data,
+                    # "location": location_data,
+                    "weather": weather_data
+                }
 
-            if count % 100:
-                producer.flush()
-            
+                message = json.dumps(message_json)
+
+                try:
+                    producer.produce(producer.topic,
+                                    message,
+                                    callback=producer.deliver_callback,
+                                    key=country)
+                except BufferError:
+                    sys.stderr.write(
+                        f'Local Producer queue full ({len(p)} messages awaiting delivery) try again\n')
+
+                # The call will return immediately without blocking
+                producer.poll(0)
+
+                count += 1
+
+                if count % 100:
+                    producer.flush()
+            except SSLError as ex:
+                print("An SSL error occurred:", ex)
+                time.sleep(30)
+            except Exception as ex:
+                print("An unexpected error occurred:", ex)
+                time.sleep(30)
+
     producer.flush()
     end_time = datetime.now(ZoneInfo("Europe/Warsaw"))
     duration_in_seconds = (end_time - start_time).total_seconds()
@@ -62,8 +77,11 @@ def scheduled_task():
 
 scheduler = BackgroundScheduler(daemon=True)
 scheduler.add_job(scheduled_task, 'interval', hours=1)
+
 scheduler.start()
-scheduled_task()
+
+fifo_queue.append(f'Started at {datetime.now()}')
+
 
 @app.route('/')
 def home():
