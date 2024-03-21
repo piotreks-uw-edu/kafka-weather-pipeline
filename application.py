@@ -3,7 +3,7 @@ import sys
 import numpy as np
 import json
 import countries.europe as e
-from weather_api.api import get_pollution_data, get_location_data
+from weather_api.api import get_pollution_data, get_location_data, get_weather_data
 from kafka.producer import CustomProducer
 from flask import Flask
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -15,21 +15,27 @@ app = Flask(__name__)
 
 fifo_queue = deque(maxlen=10)
 
+
 def scheduled_task():
     api_key = os.environ.get('API_KEY')
     producer = CustomProducer()
-    step = random.randrange(800, 1000)/100
+    step = random.randrange(800, 1000)/1000
     count = 0
     start_time = datetime.now()
     for latitude in np.arange(e.south_point, e.north_point, step):
         for longitude in np.arange(e.west_point, e.east_point, step):
             pollution_data = get_pollution_data(latitude, longitude, api_key)
-            location_data = get_location_data(latitude, longitude, api_key)
-            country = location_data [0]['country'] if location_data else 'no country'
+            # location_data = get_location_data(latitude, longitude, api_key)
+            weather_data = get_weather_data(latitude, longitude, api_key)
+            try:
+                country = weather_data['sys']['country']
+            except KeyError:
+                country = 'no country'
 
             message_json = {
-                "pollution" : pollution_data,
-                "location" : location_data
+                "pollution": pollution_data,
+                # "location": location_data,
+                "weather": weather_data
             }
 
             message = json.dumps(message_json)
@@ -42,7 +48,7 @@ def scheduled_task():
             except BufferError:
                 sys.stderr.write(
                     f'Local Producer queue full ({len(p)} messages awaiting delivery) try again\n')
-            
+
             # The call will return immediately without blocking
             producer.poll(0)
 
@@ -50,7 +56,7 @@ def scheduled_task():
 
             if count % 100:
                 producer.flush()
-            
+
     producer.flush()
     end_time = datetime.now()
     duration_in_seconds = (end_time - start_time).total_seconds()
@@ -60,9 +66,11 @@ def scheduled_task():
 
 
 scheduler = BackgroundScheduler(daemon=True)
-scheduler.add_job(scheduled_task, 'interval', minutes=5)
-                 
+scheduler.add_job(scheduled_task, 'interval', hours=1)
+
 scheduler.start()
+fifo_queue.append(f'Started at {datetime.now()}')
+
 
 @app.route('/')
 def home():
