@@ -11,7 +11,7 @@ app = Flask(__name__)
 fifo_queue = deque(maxlen=10)
 
 def scheduled_task():
-    random.randrange(900, 1100)/500
+    step = random.randrange(900, 1100)/500
     log_info = f.send_to_kafka(step)
     fifo_queue.append(log_info)
 
@@ -28,6 +28,6 @@ def home():
     return "<p>".join(list(fifo_queue))
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 5006))
     app.run(host='0.0.0.0', port=port)
 
