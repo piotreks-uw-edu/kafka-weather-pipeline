@@ -11,7 +11,7 @@ app = Flask(__name__)
 fifo_queue = deque(maxlen=10)
 
 def scheduled_task():
-    step = random.randrange(900, 1100)/800
+    step = random.randrange(500, 1500)/700
     log_info = f.send_to_kafka(step)
     fifo_queue.append(log_info)
 
