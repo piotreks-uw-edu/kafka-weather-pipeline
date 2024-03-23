@@ -39,13 +39,14 @@ def send_to_kafka(step):
 
     count = 0
     start_time = datetime.now(ZoneInfo("Europe/Warsaw"))
-    for latitude in np.arange(e.south_point, e.north_point, step):
-        for longitude in np.arange(e.west_point, e.east_point, step):
+    # for latitude in np.arange(e.south_point, e.north_point, step):
+    #     for longitude in np.arange(e.west_point, e.east_point, step):
+    for latitude in np.arange(e.north_point, e.south_point,  -step):
+        for longitude in np.arange(e.east_point, e.west_point, -step):            
             try:
                 apid_data = get_api_data(latitude, longitude, api_key)
                 message = apid_data['message']
                 country = apid_data['country']
-                print(country)
 
                 try:
                     producer.produce(producer.topic,
@@ -59,9 +60,13 @@ def send_to_kafka(step):
                 # The call will return immediately without blocking
                 producer.poll(0)
 
+                if count % 100 == 0:
+                    print(count)
+                    print(country)
+
                 count += 1
 
-                if count % 100:
+                if count % 100 == 0:
                     producer.flush()
             except SSLError as ex:
                 print("An SSL error occurred:", ex)
