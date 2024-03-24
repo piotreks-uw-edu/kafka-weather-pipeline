@@ -1,0 +1,1 @@
+docker build -t databricks-cli:latest ./docker-build -f ./docker-build/dockerfile
