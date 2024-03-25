@@ -1,8 +1,18 @@
 // Databricks notebook source
+// MAGIC %md
+// MAGIC ## Configuring Kafka Consumer Connection
+
+// COMMAND ----------
+
 val topic = "air-in-europe"
 val primaryConnectionString = dbutils.secrets.get(scope = "AIR_IN_EUROPE_SCOPE", key = "primaryConnectionString")
 val jaasConfigString = "kafkashaded.org.apache.kafka.common.security.plain.PlainLoginModule required username=\"$ConnectionString\"password=\"" + primaryConnectionString + "\";"
 val bootstrapServers = primaryConnectionString.split(";")(0).split("//")(1).split("/")(0) + dbutils.secrets.get(scope = "AIR_IN_EUROPE_SCOPE", key = "kafkaPort")
+
+// COMMAND ----------
+
+// MAGIC %md
+// MAGIC ## Streaming Data from Kafka into Spark
 
 // COMMAND ----------
 
@@ -19,7 +29,6 @@ val kafkaStream = spark.readStream
                  .option("startingOffsets", "earliest") // NOTE: you can use this option to always start the stream from the beginning, or omit the option to only receive messages after connecting
                  .load
 
-// Select the columns of interest from the streaming DataFrame
 val raw_data = kafkaStream.selectExpr("CAST(key AS STRING)", "timestamp", "CAST(value AS STRING)")
 
 
@@ -27,18 +36,16 @@ val raw_data = kafkaStream.selectExpr("CAST(key AS STRING)", "timestamp", "CAST(
 // COMMAND ----------
 
 // MAGIC %md
-// MAGIC Pollution schema
+// MAGIC ## Defining Schemas for Pollution and Weather Data Processing
 
 // COMMAND ----------
 
 import org.apache.spark.sql.types._
 
-// Define the schema for the main pollution info
 val mainSchema = StructType(Seq(
   StructField("aqi", IntegerType)
 ))
 
-// Define the schema for the pollution components
 val componentsSchema = StructType(Seq(
   StructField("co", DoubleType),
   StructField("no", DoubleType),
@@ -50,30 +57,24 @@ val componentsSchema = StructType(Seq(
   StructField("nh3", DoubleType)
 ))
 
-// Define the schema for the coordinates (used in both pollution and weather)
 val coordSchema = StructType(Seq(
   StructField("lon", DoubleType),
   StructField("lat", DoubleType)
 ))
 
-// Define the schema for each item in the pollution list
 val listItemSchema = StructType(Seq(
   StructField("main", mainSchema),
   StructField("components", componentsSchema),
   StructField("dt", LongType)
 ))
 
-// Define the schema for the list array within pollution
 val listSchema = ArrayType(listItemSchema)
 
-// Define the schema for the pollution information
 val pollutionSchema = StructType(Seq(
   StructField("coord", coordSchema),
   StructField("list", listSchema)
 ))
 
-// Weather schema definition starts here
-// Define the schema for the weather conditions
 val weatherConditionsSchema = ArrayType(StructType(Seq(
   StructField("id", IntegerType),
   StructField("main", StringType),
@@ -81,7 +82,6 @@ val weatherConditionsSchema = ArrayType(StructType(Seq(
   StructField("icon", StringType)
 )))
 
-// Define the schema for the main weather data
 val mainWeatherSchema = StructType(Seq(
   StructField("temp", DoubleType),
   StructField("feels_like", DoubleType),
@@ -91,18 +91,15 @@ val mainWeatherSchema = StructType(Seq(
   StructField("humidity", IntegerType)
 ))
 
-// Define the schema for the wind
 val windSchema = StructType(Seq(
   StructField("speed", DoubleType),
   StructField("deg", IntegerType)
 ))
 
-// Define the schema for the clouds
 val cloudsSchema = StructType(Seq(
   StructField("all", IntegerType)
 ))
 
-// Define the schema for the system information
 val sysSchema = StructType(Seq(
   StructField("type", IntegerType),
   StructField("id", IntegerType),
@@ -111,7 +108,6 @@ val sysSchema = StructType(Seq(
   StructField("sunset", LongType)
 ))
 
-// Define the complete schema for the weather information
 val weatherSchema = StructType(Seq(
   StructField("coord", coordSchema),
   StructField("weather", weatherConditionsSchema),
@@ -126,7 +122,6 @@ val weatherSchema = StructType(Seq(
   StructField("name", StringType)
 ))
 
-// Define the complete JSON schema that includes both pollution and weather
 val jsonSchema = StructType(Seq(
   StructField("pollution", pollutionSchema),
   StructField("weather", weatherSchema)
@@ -135,10 +130,14 @@ val jsonSchema = StructType(Seq(
 
 // COMMAND ----------
 
-// Assuming df is your initial DataFrame with the 'value' column containing the JSON strings
+// MAGIC %md
+// MAGIC ## Processing and Extracting Key Data from JSON Pollution and Weather Streams
+
+// COMMAND ----------
+
 val dfProcessed = raw_data
   .withColumn("jsonData", from_json(col("value"), jsonSchema)) // Parse the JSON string into structured data
-  .withColumn("firstListItem", explode(col("jsonData.pollution.list"))) // Explode the list array to handle multiple items if necessary
+  .withColumn("firstListItem", explode(col("jsonData.pollution.list"))) // Explode the list array to handle multiple items 
   .select(
     col("timestamp"),
     col("key").alias("country"),
@@ -173,6 +172,11 @@ val dfProcessed = raw_data
 
 // COMMAND ----------
 
+// MAGIC %md
+// MAGIC ## Streaming Processed Data to a Delta Table
+
+// COMMAND ----------
+
 import org.apache.spark.sql.streaming.Trigger
 import org.apache.spark.sql.functions._
 
@@ -180,7 +184,7 @@ val pathCore = dbutils.secrets.get(scope = "AIR_IN_EUROPE_SCOPE", key = "pathCor
 
 val deltaTableExtractedDataCheckpoint  = s"dbfs:/$pathCore/delta_air_in_europe_chk"
 
-dfProcessed.writeStream   // The same stream we're getting from "Kafka", transforming and displaying above...
+dfProcessed.writeStream
       .format("delta")
       .outputMode("append")
       .trigger(Trigger.ProcessingTime("1 second"))
@@ -191,13 +195,18 @@ dfProcessed.writeStream   // The same stream we're getting from "Kafka", transfo
 
 // COMMAND ----------
 
-// MAGIC %sql
-// MAGIC SELECT COUNT(*) FROM air_in_europe
+// MAGIC %md
+// MAGIC ## Getting Data From the Delta Table
 
 // COMMAND ----------
 
 val dfDeltaTable = spark.sql("SELECT * FROM air_in_europe WHERE country not in ('DZ', 'IQ', 'TN')")
 dfDeltaTable.createOrReplaceTempView("delta_table")
+
+// COMMAND ----------
+
+// MAGIC %md
+// MAGIC ## Loading and Preparing ISO Country Codes for Data Enrichment
 
 // COMMAND ----------
 
@@ -209,7 +218,6 @@ def dfCountriesIso =  spark.read
     .select("Code", "Country")
 
 dfCountriesIso.createOrReplaceTempView("CountriesIso")
-// display(dfCountriesIso)
 
 // COMMAND ----------
 
@@ -229,9 +237,6 @@ val dfTopCountries = spark.sql(
   """
 )
 
-display(dfTopCountries)
-
-
 // COMMAND ----------
 
 // MAGIC %md
@@ -247,13 +252,6 @@ display(dfTopCountries)
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.Row
 
-// Calculate Pearson correlation coefficient
-val corrTemperatureO3 = dfDeltaTable.stat.corr("temperature", "O3", "pearson")
-val corrTemperaturePM10 = dfDeltaTable.stat.corr("temperature", "PM10", "pearson")
-val corrVisibilityPM10 = dfDeltaTable.stat.corr("visibility", "PM10", "pearson")
-val corrWindPM10 = dfDeltaTable.stat.corr("wind_speed", "PM10", "pearson")
-val corrCloudinessO3 = dfDeltaTable.stat.corr("cloudiness", "O3", "pearson")
-
 val corrSchema = StructType(List(
   StructField("weatherFactor", StringType, nullable = false),
   StructField("pollutionFactor", StringType, nullable = false),
@@ -261,16 +259,52 @@ val corrSchema = StructType(List(
 ))
 
 val corrData = Seq(
-  Row("temperature", "O3", corrTemperatureO3),
-  Row("temperature", "PM10", corrTemperaturePM10),
-  Row("visibility", "PM10", corrVisibilityPM10),
-  Row("wind_speed", "PM10", corrWindPM10),
-  Row("cloudiness", "O3", corrCloudinessO3)
+  Row("temperature", "O3", dfDeltaTable.stat.corr("temperature", "O3", "pearson")),
+  Row("temperature", "PM10", dfDeltaTable.stat.corr("temperature", "PM10", "pearson")),
+  Row("temperature", "CO", dfDeltaTable.stat.corr("temperature", "CO", "pearson")),
+  Row("temperature", "NO", dfDeltaTable.stat.corr("temperature", "NO", "pearson")),
+  Row("temperature", "NO2", dfDeltaTable.stat.corr("temperature", "NO2", "pearson")),
+  Row("temperature", "SO2", dfDeltaTable.stat.corr("temperature", "SO2", "pearson")),
+  Row("temperature", "PM2_5", dfDeltaTable.stat.corr("temperature", "PM2_5", "pearson")),
+
+  Row("pressure", "PM10", dfDeltaTable.stat.corr("pressure", "PM10", "pearson")),
+  Row("pressure", "CO", dfDeltaTable.stat.corr("pressure", "CO", "pearson")),
+  Row("pressure", "NO", dfDeltaTable.stat.corr("pressure", "NO", "pearson")),
+  Row("pressure", "NO2", dfDeltaTable.stat.corr("pressure", "NO2", "pearson")),
+  Row("pressure", "SO2", dfDeltaTable.stat.corr("pressure", "SO2", "pearson")),
+  Row("pressure", "PM2_5", dfDeltaTable.stat.corr("pressure", "PM2_5", "pearson")),
+  
+  Row("humidity", "PM10", dfDeltaTable.stat.corr("humidity", "PM10", "pearson")),
+  Row("humidity", "CO", dfDeltaTable.stat.corr("humidity", "CO", "pearson")),
+  Row("humidity", "NO", dfDeltaTable.stat.corr("humidity", "NO", "pearson")),
+  Row("humidity", "NO2", dfDeltaTable.stat.corr("humidity", "NO2", "pearson")),
+  Row("humidity", "SO2", dfDeltaTable.stat.corr("humidity", "SO2", "pearson")),
+  Row("humidity", "PM2_5", dfDeltaTable.stat.corr("humidity", "PM2_5", "pearson")), 
+    
+  Row("visibility", "PM10", dfDeltaTable.stat.corr("visibility", "PM10", "pearson")),
+  Row("visibility", "CO", dfDeltaTable.stat.corr("visibility", "CO", "pearson")),
+  Row("visibility", "NO", dfDeltaTable.stat.corr("visibility", "NO", "pearson")),
+  Row("visibility", "NO2", dfDeltaTable.stat.corr("visibility", "NO2", "pearson")),
+  Row("visibility", "SO2", dfDeltaTable.stat.corr("visibility", "SO2", "pearson")),
+  Row("visibility", "PM2_5", dfDeltaTable.stat.corr("visibility", "PM2_5", "pearson")),
+
+  Row("wind_speed", "PM10", dfDeltaTable.stat.corr("wind_speed", "PM10", "pearson")),
+  Row("wind_speed", "CO", dfDeltaTable.stat.corr("wind_speed", "CO", "pearson")),
+  Row("wind_speed", "NO", dfDeltaTable.stat.corr("wind_speed", "NO", "pearson")),
+  Row("wind_speed", "NO2", dfDeltaTable.stat.corr("wind_speed", "NO2", "pearson")),
+  Row("wind_speed", "SO2", dfDeltaTable.stat.corr("wind_speed", "SO2", "pearson")),
+  Row("wind_speed", "PM2_5", dfDeltaTable.stat.corr("wind_speed", "PM2_5", "pearson")), 
+  
+  Row("cloudiness", "PM10", dfDeltaTable.stat.corr("cloudiness", "PM10", "pearson")),
+  Row("cloudiness", "CO", dfDeltaTable.stat.corr("cloudiness", "CO", "pearson")),
+  Row("cloudiness", "NO", dfDeltaTable.stat.corr("cloudiness", "NO", "pearson")),
+  Row("cloudiness", "NO2", dfDeltaTable.stat.corr("cloudiness", "NO2", "pearson")),
+  Row("cloudiness", "SO2", dfDeltaTable.stat.corr("cloudiness", "SO2", "pearson")),
+  Row("cloudiness", "PM2_5", dfDeltaTable.stat.corr("cloudiness", "PM2_5", "pearson")),   
 )
 
 val dfCorrelations = spark.createDataFrame(spark.sparkContext.parallelize(corrData), corrSchema)
 
-display(dfCorrelations)
 
 // COMMAND ----------
 
@@ -303,8 +337,6 @@ val dfCapitalsPollution = spark.sql(
 
 )
 
-display(dfCapitalsPollution)
-
 // COMMAND ----------
 
 // MAGIC %md
@@ -313,20 +345,17 @@ display(dfCapitalsPollution)
 // COMMAND ----------
 
 val dfWithRoundedCoordinates = dfDeltaTable
-  .withColumn("lat_int", round($"lat"))
-  .withColumn("lon_int", round($"lon"))
+  .withColumn("lat_int", round($"lat", 1)) // Round to 1 decimal place
+  .withColumn("lon_int", round($"lon", 1))
   .select("lat_int", "lon_int", "PM10")
   .groupBy($"lat_int", $"lon_int")
   .agg(round(avg("PM10"), 1).alias("avg_PM10"))
   .orderBy($"lat_int", $"lon_int")
 
-println(dfWithRoundedCoordinates.count() )
-dfWithRoundedCoordinates.show(5)
-
 // COMMAND ----------
 
 // MAGIC %md
-// MAGIC ## Load to the Service Layer
+// MAGIC ## Loading to the Service Layer (Azure SQL Database)
 // MAGIC ### Set the connection
 
 // COMMAND ----------
@@ -368,7 +397,6 @@ import java.util.Properties
 val connection = DriverManager.getConnection(jdbcUrl, connectionProperties)
 
 try {
-  // Creating a statement object to execute the query
   val statement = connection.createStatement()
 
   statement.execute(s"TRUNCATE TABLE $highPollutionTable")
