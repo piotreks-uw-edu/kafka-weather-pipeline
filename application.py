@@ -15,19 +15,32 @@ def scheduled_task():
     log_info = f.send_to_kafka(step)
     fifo_queue.append(log_info)
 
-f.schedule(scheduled_task)
-
-start_time = datetime.now(ZoneInfo("Europe/Warsaw"))
-start_time_string = start_time.strftime('%Y-%m-%d %H:%M:%S')
-
-fifo_queue.append(f'Started at {start_time_string}')
-
 
 @app.route('/')
 def home():
+    content = """
+    <h1>Home</h1>
+    <a href="/correlations">correlations</a>
+    """
+    return content
+
+
+@app.route('/correlations')
+def correlations():
+    return f.get_correlations()
+
+@app.route('/kafka')
+def kafka():
+    f.schedule(scheduled_task)
+
+    start_time = datetime.now(ZoneInfo("Europe/Warsaw"))
+    start_time_string = start_time.strftime('%Y-%m-%d %H:%M:%S')
+
+    fifo_queue.append(f'Started at {start_time_string}')    
+
     return "<p>".join(list(fifo_queue))
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5006))
+    port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
 

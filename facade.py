@@ -10,6 +10,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 import countries.europe as e
 import scheduler as s
+from analysis import analysis as a
 
 
 def schedule(scheduled_task):
@@ -85,3 +86,7 @@ def send_to_kafka(step):
     message = f'{count} messages were sent to Kafka at {start_time_string}, finished at {end_time_string}, lasted <b>{duration_in_minutes}</b> minutes'
 
     return message
+
+
+def get_correlations():
+    return a.get_correlations()

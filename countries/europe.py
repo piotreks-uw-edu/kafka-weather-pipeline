@@ -27,6 +27,6 @@ def get_region(latitude, longitude, north_point, south_point, west_point,
     return f'{lat}_{lon}'
     
 
-print(get_number_of_api_calls(north_point, south_point, west_point, east_point, step))
+# print(get_number_of_api_calls(north_point, south_point, west_point, east_point, step))
 # print(get_region(63.81267324116743, 28.598205971821308, north_point,
 # south_point, west_point, east_point))
