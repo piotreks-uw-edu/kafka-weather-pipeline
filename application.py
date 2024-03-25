@@ -19,7 +19,7 @@ def scheduled_task():
 @app.route('/')
 def home():
     content = """
-    <h1>Home</h1>
+    <h1>Analysis</h1>
     <a href="/correlations">correlations</a>
     """
     return content
