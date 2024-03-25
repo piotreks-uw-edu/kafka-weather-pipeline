@@ -94,3 +94,11 @@ def get_correlations():
 
 def get_high_pollution():
     return a.get_high_pollution()
+
+
+def get_capital_pollution():
+    return a.get_capital_pollution()
+
+
+def get_distribution():
+    return a.get_distribution()

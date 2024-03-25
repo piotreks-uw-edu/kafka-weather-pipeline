@@ -22,6 +22,9 @@ def home():
     <h1>Analysis</h1>
     <p><a href="/correlations">correlations</a>
     <p><a href="/high_pollution">high pollution</a>
+    <p><a href="/capital_pollution">capital pollution</a>
+    <p><a href="/distribution">distribution</a>
+    <p><a href="/kafka">kafka log</a>
     """
     return content
 
@@ -34,6 +37,16 @@ def correlations():
 @app.route('/high_pollution')
 def high_pollution():
     return f.get_high_pollution()
+
+
+@app.route('/capital_pollution')
+def capital_pollution():
+    return f.get_capital_pollution()
+
+
+@app.route('/distribution')
+def distribution():
+    return f.get_distribution()
 
 
 @app.route('/kafka')

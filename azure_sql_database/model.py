@@ -36,3 +36,16 @@ class HighPollution (Base):
     __tablename__ = "HighPollution"
     country = Column(String)
     PM10 = Column(Float, primary_key=True, autoincrement=False)
+
+
+class CapitalPollution (Base):
+    __tablename__ = "CapitalPollution"
+    capital = Column(String)
+    NO2 = Column(Float, primary_key=True, autoincrement=False)
+
+
+class Distribution (Base):
+    __tablename__ = "Distribution"
+    lat_int = Column(Float)
+    lon_int = Column(Float)
+    avg_PM10 = Column(Float, primary_key=True, autoincrement=False)
