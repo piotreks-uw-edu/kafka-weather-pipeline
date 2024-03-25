@@ -3,11 +3,9 @@ from azure_sql_database.model import Database, Correlation, HighPollution, Capit
 import base64
 from io import BytesIO
 from matplotlib.figure import Figure
-import numpy as np
-import matplotlib.pyplot as plt
 import folium
 from folium.plugins import HeatMap
-from flask import Flask, render_template_string
+from flask import render_template_string
 
 
 database = Database(AZURE_DATABASE_URL)
@@ -51,30 +49,25 @@ def get_correlations():
 
 def get_high_pollution():
     with database.session() as session:
-        # Fetch all entries in the HighPollution table
         high_pollution_data = session.query(HighPollution).all()
     
-    # Prepare data for plotting
     countries = [data.country for data in high_pollution_data]
     pm10_levels = [data.PM10 for data in high_pollution_data]
     
-    fig = Figure(figsize=(10, 6))  # Adjust figure size as needed
+    fig = Figure(figsize=(10, 6))
     ax = fig.subplots()
-    ax.bar(countries, pm10_levels, color='blue')  # You can customize the color
+    ax.bar(countries, pm10_levels, color='blue')
     
     ax.set_title("PM10 Pollution Levels by Country")
     ax.set_xlabel("Country")
     ax.set_ylabel("PM10 Level")
     ax.set_xticklabels(countries, rotation=45, ha="right")
     
-    # Adding value labels on top of each bar
     for index, value in enumerate(pm10_levels):
         ax.text(index, value, str(value), ha='center', va='bottom')
     
-    # Save it to a temporary buffer.
     buf = BytesIO()
     fig.savefig(buf, format="png", bbox_inches="tight")
-    # Embed the result in the html output.
     data = base64.b64encode(buf.getbuffer()).decode("ascii")
     
     return f"<img src='data:image/png;base64,{data}'/>"  
@@ -82,55 +75,43 @@ def get_high_pollution():
 
 def get_capital_pollution():
     with database.session() as session:
-        # Fetch all entries in the CapitalPollution table
-        pollution_data = session.query(CapitalPollution).order_by(CapitalPollution.NO2.desc()).all()
+        pollution_data = session.query(CapitalPollution).order_by(
+            CapitalPollution.NO2.desc()).all()
 
-    # Prepare data for plotting
     capitals = [data.capital for data in pollution_data]
     no2_levels = [data.NO2 for data in pollution_data]
-    
-    fig = Figure(figsize=(10, 8))  # Adjust figure size as needed
+
+    fig = Figure(figsize=(10, 8))
     ax = fig.subplots()
-    ax.bar(capitals, no2_levels, color='purple')  # Customized color to purple
-    
+    ax.bar(capitals, no2_levels, color='purple')
+
     ax.set_title("NO2 Pollution Levels by Capital")
     ax.set_xlabel("Capital")
     ax.set_ylabel("NO2 Level")
     ax.set_xticklabels(capitals, rotation=45, ha="right")
-    
-    # Optionally, add value labels on top of each bar for clarity
+
     for index, value in enumerate(no2_levels):
         ax.text(index, value, f'{value:.2f}', ha='center', va='bottom')
-    
-    # Save it to a temporary buffer.
+
     buf = BytesIO()
     fig.savefig(buf, format="png", bbox_inches="tight")
-    # Embed the result in the html output.
     data = base64.b64encode(buf.getbuffer()).decode("ascii")
-    
-    return f"<img src='data:image/png;base64,{data}'/>"
 
+    return f"<img src='data:image/png;base64,{data}'/>"
 
 
 def get_distribution():
     with database.session() as session:
-        # Fetch all entries in the Distribution table
         distributions = session.query(Distribution).all()
 
-    # Extract latitude, longitude, and avg_PM10 levels for plotting
     data = [(d.lat_int, d.lon_int, d.avg_PM10) for d in distributions]
 
-    # Create a base map
     base_map = folium.Map(location=[0, 0], zoom_start=2)
 
-    # Add a heat map layer to the base map
     folium.plugins.HeatMap(data).add_to(base_map)
 
-    # Instead of saving, we'll render the map directly in the HTML response
-    # Folium maps can be included in HTML via their _repr_html_ method
     map_html = base_map._repr_html_()
 
-    # Use a simple template to serve the HTML
     html_template = """
     <!DOCTYPE html>
     <html>
