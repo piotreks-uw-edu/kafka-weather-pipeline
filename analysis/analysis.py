@@ -1,5 +1,5 @@
 from azure_sql_database.params import AZURE_DATABASE_URL
-from azure_sql_database.model import Database, Correlation
+from azure_sql_database.model import Database, Correlation, HighPollution
 import base64
 from io import BytesIO
 from matplotlib.figure import Figure
@@ -42,3 +42,35 @@ def get_correlations():
     data = base64.b64encode(buf.getbuffer()).decode("ascii")
     
     return f"<img src='data:image/png;base64,{data}'/>"
+
+
+def get_high_pollution():
+    with database.session() as session:
+        # Fetch all entries in the HighPollution table
+        high_pollution_data = session.query(HighPollution).all()
+    
+    # Prepare data for plotting
+    countries = [data.country for data in high_pollution_data]
+    pm10_levels = [data.PM10 for data in high_pollution_data]
+    
+    fig = Figure(figsize=(10, 6))  # Adjust figure size as needed
+    ax = fig.subplots()
+    ax.bar(countries, pm10_levels, color='blue')  # You can customize the color
+    
+    ax.set_title("PM10 Pollution Levels by Country")
+    ax.set_xlabel("Country")
+    ax.set_ylabel("PM10 Level")
+    ax.set_xticklabels(countries, rotation=45, ha="right")
+    
+    # Adding value labels on top of each bar
+    for index, value in enumerate(pm10_levels):
+        ax.text(index, value, str(value), ha='center', va='bottom')
+    
+    # Save it to a temporary buffer.
+    buf = BytesIO()
+    fig.savefig(buf, format="png", bbox_inches="tight")
+    # Embed the result in the html output.
+    data = base64.b64encode(buf.getbuffer()).decode("ascii")
+    
+    return f"<img src='data:image/png;base64,{data}'/>"  
+

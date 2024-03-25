@@ -30,3 +30,9 @@ class Correlation(Base):
 
     def __repr__(self):
         return f'Correlation: {self.weatherFactor}, {self.pollutionFactor}, {self.pearson}'
+    
+
+class HighPollution (Base):
+    __tablename__ = "HighPollution"
+    country = Column(String)
+    PM10 = Column(Float, primary_key=True, autoincrement=False)

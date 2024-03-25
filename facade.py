@@ -90,3 +90,7 @@ def send_to_kafka(step):
 
 def get_correlations():
     return a.get_correlations()
+
+
+def get_high_pollution():
+    return a.get_high_pollution()

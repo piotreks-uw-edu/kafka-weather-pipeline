@@ -20,7 +20,8 @@ def scheduled_task():
 def home():
     content = """
     <h1>Analysis</h1>
-    <a href="/correlations">correlations</a>
+    <p><a href="/correlations">correlations</a>
+    <p><a href="/high_pollution">high pollution</a>
     """
     return content
 
@@ -28,6 +29,12 @@ def home():
 @app.route('/correlations')
 def correlations():
     return f.get_correlations()
+
+
+@app.route('/high_pollution')
+def high_pollution():
+    return f.get_high_pollution()
+
 
 @app.route('/kafka')
 def kafka():
