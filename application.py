@@ -26,12 +26,12 @@ fifo_queue.append(f'Started at {start_time_string}')
 @app.route('/')
 def home():
     content = """
-    <h1>Analysis</h1>
-    <p><a href="/correlations">correlations</a>
-    <p><a href="/high_pollution">high pollution</a>
-    <p><a href="/capital_pollution">capital pollution</a>
-    <p><a href="/distribution">distribution</a>
-    <p><a href="/kafka">kafka log</a>
+    <h1>Processing Data on Air Pollution in Europe on a Modern Data Platform</h1>
+    <p><a href="/high_pollution">Countries With the Highest Levels of PM10 pollution</a>
+    <p><a href="/correlations">Correlation Between Weather Conditions and Air Pollution Levels</a>
+    <p><a href="/capital_pollution">Capital Cities With the Highest Levels of Traffic Polution</a>
+    <p><a href="/distribution">Distribution of Specific Pollutants Across Europe</a>
+    <p><a href="/kafka">Kafka processing log</a>
     """
     return content
 
