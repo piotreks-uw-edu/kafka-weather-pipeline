@@ -17,7 +17,6 @@ class Database():
         session = self.Session()
         try:
             yield session
-            # No commit or rollback is needed for read-only operations
         finally:
             session.close()
 
