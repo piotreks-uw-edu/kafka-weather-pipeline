@@ -40,10 +40,8 @@ def send_to_kafka(step):
 
     count = 0
     start_time = datetime.now(ZoneInfo("Europe/Warsaw"))
-    # for latitude in np.arange(e.south_point, e.north_point, step):
-    #     for longitude in np.arange(e.west_point, e.east_point, step):
-    for latitude in np.arange(e.north_point, e.south_point,  -step):
-        for longitude in np.arange(e.east_point, e.west_point, -step):            
+    for latitude in np.arange(e.south_point, e.north_point, step):
+        for longitude in np.arange(e.west_point, e.east_point, step):
             try:
                 apid_data = get_api_data(latitude, longitude, api_key)
                 message = apid_data['message']
